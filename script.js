@@ -11,15 +11,15 @@ const ROOF_EDGES_PATH = "edges/roof_edges.json";
 
 
 /* Definition of our variables */
-var camera, scene, renderer, controls;
-var map, polygons, blackHoles;
-var rotationSpeed = 0.01;
-let z_offset = 0; // meters
-let z_offset_bh = 0;
+let camera, scene, renderer, controls;
+let map, buildings, blackHoles, linesGround, linesSky;
+let z_offset_bh = 0; 	// (meters) to elevate the building buildings
+let mode3D = true; 		// variable to define the default mode 2D or 3D
+let edgesVisible = false; 	// variable to define the default visibility of the edges
 
 
 /* Load Texture Map*/
-var texture = new THREE.TextureLoader().load("./images/turgot_map_crop2.jpeg");
+let texture = new THREE.TextureLoader().load("./images/turgot_map_crop2.jpeg");
 
 /* Load GeoJSON */
 var sky_edges, ground_edges, roof_edges;
@@ -28,6 +28,9 @@ let groundPromise = fetch(GROUND_EDGES_PATH).then(result => result.json());
 let roofPromise = fetch(ROOF_EDGES_PATH).then(result => result.json());
 let promises = [skyPromise, groundPromise, roofPromise];
 
+/**
+ * Promise for reception of the GeoJSON
+ */
 Promise.all(promises)
 	.then(promises => {
 		sky_edges = promises[0];
@@ -51,8 +54,11 @@ animate();
  * Initialisation of Scene, Camera, Renderer, Controls and Map
  */
 function init() {
-	camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 1000);
+	camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 10000);
 	camera.position.z = 700;
+	camera.up.set(0, 0, 1);
+
+	console.log("initialisation", camera)
 
 	scene = new THREE.Scene();
 
@@ -62,9 +68,15 @@ function init() {
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	document.body.appendChild(renderer.domElement);
 
+	// Define orbitControls and their initial state
 	controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+	controls.saveState()
 }
 
+/**
+ * Method for animation at each reaload of frame
+ */
 function animate() {
 	requestAnimationFrame(animate);
 
@@ -73,37 +85,55 @@ function animate() {
 	renderer.render(scene, camera);
 }
 
+
 /* Dat Gui */
-var FizzyText = function () {
-	this.resetView = function () {
-		console.log(camera)
+let FizzyText = function () {
+	// Button to modify view : view from the zenith
+	this.zenithView = function () {
+		// Reset camera position
 		camera.position.x = 0.;
 		camera.position.y = 0.;
 		camera.position.z = 700.;
 		camera.updateProjectionMatrix();
+
+		// Reset orbitControls state to the initial state
+		controls.reset();
+	}
+	// Button to modify view : view in Turgot perspective
+	this.turgotView = function () {
+		// Modify camera position
+		camera.position.x = -490.
+		camera.position.y = 455.
+		camera.position.z = 340.
+		camera.updateProjectionMatrix();
 	}
 
-	// this.message = 'dat.gui';
-	// this.speed = 0.8;
-	// this.opacity = 50;
-	// this.displayOutline = false;
+	// Button to switch from a 3D view with the buildings and a 2D view with only the map
+	this.mode3D = mode3D;
 
+	// Button to display the edges
+	this.showEdges = edgesVisible;
 };
 
+
 window.onload = function () {
-	var text = new FizzyText();
-	var gui = new dat.GUI();
-	gui.add(text, 'resetView');
-	// gui.add(text, 'message');
-	// gui.add(text, 'speed', -5, 5)
-	// 	.onChange((value) => {
-	// 		rotationSpeed = value / 100;
-	// 	});
-	// gui.add(text, 'opacity', 0, 100)
-	// 	.onChange((value) => {
-	// 		material.opacity = value / 100;
-	// 	});
-	// gui.add(text, 'displayOutline');
+	let text = new FizzyText();
+	let gui = new dat.GUI();
+
+	gui.add(text, 'zenithView');
+	gui.add(text, 'turgotView');
+	gui.add(text, 'mode3D')
+		.onChange((value) => {
+			mode3D = value;
+			buildings.visible = mode3D;
+			blackHoles.visible = mode3D;
+		});
+	gui.add(text, 'showEdges')
+		.onChange((value) => {
+			edgesVisible = value;
+			linesGround.visible = edgesVisible;
+			linesSky.visible = edgesVisible;
+		});
 };
 
 
@@ -118,7 +148,7 @@ function computeCoordinates2D() {
 	let sky_coord_2D = [];
 	let roof_coord_2D = [];
 
-	for (i = 0; i < sky_edges.features.length; i++) {
+	for (let i = 0; i < sky_edges.features.length; i++) {
 		// Get Lambert coordinates
 		let ground_edge_Lambert = ground_edges.features[i].geometry.coordinates[0];
 		let sky_edge_Lambert = sky_edges.features[i].geometry.coordinates[0];
@@ -158,7 +188,7 @@ function computeCoordinates3D() {
 	let sky_coord_3D = [];
 	let roof_coord_3D = [];
 
-	for (i = 0; i < ground_coord_2D.length; i++) {
+	for (let i = 0; i < ground_coord_2D.length; i++) {
 
 		// Calcul 2D coordinates
 		let ground_edge_2D = ground_coord_2D[i];
@@ -205,11 +235,10 @@ function computeCoordinates3D() {
  */
 function createMap() {
 	// create a simple square shape. We duplicate the top left and bottom right
-	var mapGeometry = new THREE.BufferGeometry();
+	let mapGeometry = new THREE.BufferGeometry();
 
 	/* Initialisation of vertices and uv with bounding box */
-	// Vertices because each vertex needs to appear once per triangle.
-	var vertices = new Float32Array([
+	let vertices = new Float32Array([
 		-HALF_WIDTH, -HALF_HEIGHT, 0.0, //-1.0, -1.0, 0.0,	
 		HALF_WIDTH, -HALF_HEIGHT, 0.0, // 1.0, -1.0, 0.0,
 		HALF_WIDTH, HALF_HEIGHT, 0.0, // 1.0,  1.0, 0.0,
@@ -219,7 +248,7 @@ function createMap() {
 		-HALF_WIDTH, -HALF_HEIGHT, 0.0 //-1.0, -1.0, 0.0
 	]);
 
-	var uv = new Float32Array([
+	let uv = new Float32Array([
 		0.0, 0.0,
 		1.0, 0.0,
 		1.0, 1.0,
@@ -229,10 +258,9 @@ function createMap() {
 		0.0, 0.0
 	]);
 
-
-	// itemSize = 3 because there are 3 values (components) per vertex
 	mapGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
 	mapGeometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+
 
 	let mapMaterial = new THREE.MeshBasicMaterial({ transparent: true, color: 0xFFFFFF, map: texture, depthWrite: false });
 
@@ -258,38 +286,46 @@ function createEdges(in3D = true) {
 		[ground_coord, sky_coord, roof_coord] = computeCoordinates2D();
 	}
 
-	for (i = 0; i < ground_coord.length; i++) {
+	linesGround = new THREE.Group();
+	linesSky = new THREE.Group();
+
+	for (let i = 0; i < ground_coord.length; i++) {
 
 		let ground_edge = ground_coord[i];
 		let sky_edge = sky_coord[i];
 		let roof_edge = roof_coord[i];
 
 		// Create geometries
-		var geometryGround = new THREE.Geometry();
-		geometryGround.vertices.push(
+		const points = [];
+		points.push(
 			new THREE.Vector3(ground_edge[0][0], ground_edge[0][1], ground_edge[0][2]),
 			new THREE.Vector3(ground_edge[1][0], ground_edge[1][1], ground_edge[1][2])
 		);
-		var geometrySky = new THREE.Geometry();
-		geometrySky.vertices.push(
+		let geometryGround = new THREE.BufferGeometry().setFromPoints(points);
+		
+		const points2 = []
+		points2.push(
 			new THREE.Vector3(sky_edge[0][0], sky_edge[0][1], sky_edge[0][2]),
 			new THREE.Vector3(sky_edge[1][0], sky_edge[1][1], sky_edge[1][2])
 		);
-		var geometryRoof = new THREE.Geometry();
-		geometryRoof.vertices.push(
+		let geometrySky = new THREE.BufferGeometry().setFromPoints(points2);
+
+		const points3 = []
+		points3.push(
 			new THREE.Vector3(roof_edge[0][0], roof_edge[0][1], roof_edge[0][2]),
 			new THREE.Vector3(roof_edge[1][0], roof_edge[1][1], roof_edge[1][2])
 		);
+		let geometryRoof = new THREE.BufferGeometry().setFromPoints(points3);
 
 
 		// Create Materials with color (with texture)
-		var materialGround = new THREE.LineBasicMaterial({
+		let materialGround = new THREE.LineBasicMaterial({
 			color: 0xff0000
 		});
-		var materialSky = new THREE.LineBasicMaterial({
+		let materialSky = new THREE.LineBasicMaterial({
 			color: 0x0000ff
 		});
-		var materialRoof = new THREE.LineBasicMaterial({
+		let materialRoof = new THREE.LineBasicMaterial({
 			color: 0x00ff00
 		});
 
@@ -305,11 +341,17 @@ function createEdges(in3D = true) {
 		scene.add(lineRoof);
 	}
 
+	// Add to scene
+	scene.add(linesGround);
+	scene.add(linesSky);
+
+	linesGround.visible = edgesVisible;
+	linesSky.visible = edgesVisible;
 }
 
 /**
- * Create polygons
- * @return 1 geometry of polygons
+ * Create buildings by creating a geometry for the frontage : frontside with texture and backside in black
+ * @return 1 group geometry of buildings
  */
 function createPolygons() {
 	// Get 3D coordinates
@@ -318,27 +360,25 @@ function createPolygons() {
 	let [ground_coord_2D, sky_coord_2D, roof_coord_2D] = computeCoordinates2D();
 
 	// create a simple square shape. We duplicate the top left and bottom right
-	var polygonsGeometry = new THREE.BufferGeometry();
+	let buildingsGeometry = new THREE.BufferGeometry();
 
 	let vertices = fillVertices(ground_coord_3D, sky_coord_3D, roof_coord_3D);
 	let uv = fillUV(ground_coord_2D, sky_coord_2D, roof_coord_2D);
 
-	console.log(vertices);
+	buildingsGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+	buildingsGeometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
 
-	// itemSize = 3 because there are 3 values (components) per vertex
-	polygonsGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-	polygonsGeometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-
-	let polygonsTextureMaterial = new THREE.MeshBasicMaterial({ transparent: false, color: 0xFFFFFF, map: texture, side: THREE.FrontSide }); //, side: THREE.DoubleSide}) //, map: texture });
-	let polygonsColorMaterial = new THREE.MeshBasicMaterial({ transparent: false, color: 0x0, side: THREE.BackSide }); //, side: THREE.DoubleSide}) //, map: texture });
+	let buildingsTextureMaterial = new THREE.MeshBasicMaterial({ transparent: false, color: 0xFFFFFF, map: texture, side: THREE.FrontSide });
+	let buildingsColorMaterial = new THREE.MeshBasicMaterial({ transparent: false, color: 0x0, side: THREE.BackSide });
 
 
-	polygons = new THREE.Group();
-	polygons.add(new THREE.Mesh(polygonsGeometry, polygonsTextureMaterial));
-	polygons.add(new THREE.Mesh(polygonsGeometry, polygonsColorMaterial));
-	scene.add(polygons);
+	buildings = new THREE.Group();
+	buildings.add(new THREE.Mesh(buildingsGeometry, buildingsTextureMaterial));
+	buildings.add(new THREE.Mesh(buildingsGeometry, buildingsColorMaterial));
 
-	console.log(polygons)
+	scene.add(buildings);
+
+	buildings.visible = mode3D;
 }
 
 
@@ -351,7 +391,7 @@ function createBlackHoles() {
 	let [ground_coord_2D, sky_coord_2D, roof_coord_2D] = computeCoordinates2D();
 
 	// create a simple square shape. We duplicate the top left and bottom right
-	var blackHolesGeometry = new THREE.BufferGeometry();
+	let blackHolesGeometry = new THREE.BufferGeometry();
 
 	let vertices = fillVertices(ground_coord_2D, sky_coord_2D, roof_coord_2D);
 
@@ -362,7 +402,10 @@ function createBlackHoles() {
 	let blackHolesMaterial = new THREE.MeshBasicMaterial({ transparent: true, color: 0x0, side: THREE.DoubleSide, depthWrite: false });
 
 	blackHoles = new THREE.Mesh(blackHolesGeometry, blackHolesMaterial);
+
 	scene.add(blackHoles);
+
+	blackHoles.visible = mode3D;
 }
 
 
@@ -380,11 +423,11 @@ function fillVertices(ground_coord, sky_coord, roof_coord) {
 	// *3 => 1 point = 3 coordinates (X, Y, Z)
 	let nb_vertices = (ground_coord.length + sky_coord.length + roof_coord.length) * 6 * 3;
 	/* Initialisation of vertices and uv */
-	var vertices = new Float32Array(nb_vertices);
+	let vertices = new Float32Array(nb_vertices);
 
 	/* Fill array */
 	let i_vertices = 0;
-	for (i = 0; i < ground_coord.length; i++) {
+	for (let i = 0; i < ground_coord.length; i++) {
 		let [ground1, ground2] = ground_coord[i];
 		let [sky1, sky2] = sky_coord[i];
 		let [roof1, roof2] = roof_coord[i];
@@ -434,11 +477,11 @@ function fillUV(ground_coord, sky_coord, roof_coord) {
 	// *3 => 1 point = 2 uv coordinates (2D)
 	let nb_uv = (ground_coord.length + sky_coord.length + roof_coord.length) * 6 * 2;
 	/* Initialisation of vertices and uv */
-	var uv = new Float32Array(nb_uv);
+	let uv = new Float32Array(nb_uv);
 
 	/* Fill array */
 	let i_uv = 0;
-	for (i = 0; i < ground_coord.length; i++) {
+	for (let i = 0; i < ground_coord.length; i++) {
 		let [ground1, ground2] = ground_coord[i];
 		let [sky1, sky2] = sky_coord[i];
 		let [roof1, roof2] = roof_coord[i];
