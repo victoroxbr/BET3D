@@ -197,13 +197,17 @@ function computeCoordinates3D() {
 		let roof_edge_2D = roof_coord_2D[i];
 
 		// Compute distance: Z for the points couple (both extremities of edge)
+		let z_sky_0 = Math.sqrt((ground_edge_2D[0][0] - sky_edge_2D[0][0]) ** 2 + (ground_edge_2D[0][1] - sky_edge_2D[0][1]) ** 2);
+		let z_sky_1 = Math.sqrt((ground_edge_2D[1][0] - sky_edge_2D[1][0]) ** 2 + (ground_edge_2D[1][1] - sky_edge_2D[1][1]) ** 2);
 		let z_sky = [
-			Math.sqrt((ground_edge_2D[0][0] - sky_edge_2D[0][0]) ** 2 + (ground_edge_2D[0][1] - sky_edge_2D[0][1]) ** 2),
-			Math.sqrt((ground_edge_2D[1][0] - sky_edge_2D[1][0]) ** 2 + (ground_edge_2D[1][1] - sky_edge_2D[1][1]) ** 2)
+			Math.max(z_sky_0, z_sky_1),
+			Math.max(z_sky_0, z_sky_1)
 		];
+		let z_roof_0 = Math.sqrt((ground_edge_2D[0][0] - roof_edge_2D[0][0]) ** 2 + (ground_edge_2D[0][1] - roof_edge_2D[0][1]) ** 2);
+		let z_roof_1 = Math.sqrt((ground_edge_2D[1][0] - roof_edge_2D[1][0]) ** 2 + (ground_edge_2D[1][1] - roof_edge_2D[1][1]) ** 2);
 		let z_roof = [
-			Math.sqrt((ground_edge_2D[0][0] - roof_edge_2D[0][0]) ** 2 + (ground_edge_2D[0][1] - roof_edge_2D[0][1]) ** 2),
-			Math.sqrt((ground_edge_2D[1][0] - roof_edge_2D[1][0]) ** 2 + (ground_edge_2D[1][1] - roof_edge_2D[1][1]) ** 2)
+			Math.max(z_roof_0, z_roof_1),
+			Math.max(z_roof_0, z_roof_1)			
 		];
 
 		// Calculate 3D coordinate
