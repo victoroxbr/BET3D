@@ -5,9 +5,38 @@
         <!-- <link rel="stylesheet" href="index.css"> -->
     </head>
     <body style="margin: 0;">
+        <script id="vertexShader" type="x-shader/x-vertex">
+uniform float percentage;
+varying vec2 vUv;
+// don't ask why float, voodoo shit
+attribute float sky;
+attribute vec3 ground3D;
+
+void main() {
+    vUv = uv;
+    vec3 newPosition;
+    if(sky == 1.0) {
+        newPosition = mix(ground3D, position, percentage);
+    } else {
+        newPosition = position;
+    }
+    gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );    
+}
+ 
+
+        </script>
+
+        <script id="fragmentShader" type="x-shader/x-fragment">
+            uniform sampler2D texture1;
+            varying vec2 vUv;
+
+            void main() {
+               gl_FragColor = texture2D(texture1, vUv);
+            }
+        </script>
         <script src="./js/three.min.js"></script>
         <script src="./js/OrbitControls.js"></script>
         <script src="./js/dat.gui.min.js"></script>
         <script src="script.js"></script>
     </body>
-</html>
+</html>            

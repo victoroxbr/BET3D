@@ -33,16 +33,12 @@ Promise.all(promises)
 	.then(promises => {
 		sky_edges = promises[0];
 		ground_edges = promises[1];
-
+		init();
 		createEdges();
-		createPolygons();
 		createBlackHoles();
+		createPolygons();
+		animate();
 	})
-
-
-/* Running */
-init();
-animate();
 
 
 /* --- THREEJS AND GUI FUNCTIONS */
@@ -61,7 +57,10 @@ function init() {
 
 	createMap();
 
-	renderer = new THREE.WebGLRenderer({ antialias: true });
+	renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        logarithmicDepthBuffer: false,
+    });
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	document.body.appendChild(renderer.domElement);
 
@@ -75,11 +74,14 @@ function init() {
  * Method for animation at each reaload of frame
  */
 function animate() {
-	requestAnimationFrame(animate);
+    requestAnimationFrame(animate);
 
-	controls.update();
+    controls.update();
 
-	renderer.render(scene, camera);
+	if (buildings.children[0].material.uniforms.percentage.value < 1)
+        buildings.children[0].material.uniforms.percentage.value += 0.0005;
+
+    renderer.render(scene, camera);
 }
 
 
@@ -313,6 +315,22 @@ function createEdges(in3D = true) {
 	linesSky.visible = edgesVisible;
 }
 
+function arraysEqual(a, b) {
+    if (a === b) return true;
+    if (a == null || b == null) return false;
+    if (a.length !== b.length) return false;
+
+    // If you don't care about the order of the elements inside
+    // the array, you should sort both arrays here.
+    // Please note that calling sort on an array will modify that array.
+    // you might want to clone your array first.
+
+    for (var i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) return false;
+    }
+    return true;
+}
+
 /**
  * Create buildings by creating a geometry for the frontage : frontside with texture and backside in black
  * @return 1 group geometry of buildings
@@ -327,14 +345,52 @@ function createPolygons() {
 	let buildingsGeometry = new THREE.BufferGeometry();
 
 	let vertices = fillVertices(ground_coord_3D, sky_coord_3D);
+	let groundVertices = fillVertices(ground_coord_2D, sky_coord_2D);
 	let uv = fillUV(ground_coord_2D, sky_coord_2D);
 
 
 	buildingsGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-	buildingsGeometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
+	buildingsGeometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));	
 
-	let buildingsTextureMaterial = new THREE.MeshBasicMaterial({ transparent: false, color: 0xFFFFFF, map: texture, side: THREE.FrontSide });
-	let buildingsColorMaterial = new THREE.MeshBasicMaterial({ transparent: false, color: 0x0, side: THREE.BackSide });
+	let texture1 = new THREE.TextureLoader().load(
+        "./images/turgot_map_crop2.jpeg"
+    );
+
+    let uniforms = {
+        texture1: { type: "t", value: texture1 },
+        percentage: {type: "float", value: 0.0},      
+    };
+
+    let sky = new Uint8Array(buildingsGeometry.attributes.position.count);
+    for (let i = 0; i < buildingsGeometry.attributes.position.count; i++) {
+        if (i % 6 == 0 || i % 6 == 5 || i % 6 == 1) {
+            // ground 1 or ground 2
+            sky[i] = false;
+        } else if (i % 6 == 2 || i % 6 == 3 || i % 6 == 4) {
+            // sky 2
+            sky[i] = true;
+        } 
+	}
+
+    buildingsGeometry.setAttribute(
+        "ground3D",
+        new THREE.BufferAttribute(groundVertices, 3)
+    );
+    buildingsGeometry.setAttribute("sky", new THREE.BufferAttribute(sky, 1));
+
+    let fragmentShader = document.getElementById("fragmentShader").innerHTML;
+    let vertexShader = document.getElementById("vertexShader").innerHTML;
+
+    let buildingsTextureMaterial = new THREE.ShaderMaterial({
+        uniforms: uniforms,
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+    });
+    let buildingsColorMaterial = new THREE.MeshBasicMaterial({
+        transparent: true,
+        color: 0x0,
+        side: THREE.BackSide,
+    });
 
 
 	buildings = new THREE.Group();
@@ -352,25 +408,32 @@ function createPolygons() {
  * @return 1 geometry
  */
 function createBlackHoles() {
-	// Get 2D coordinates
-	let [ground_coord_2D, sky_coord_2D] = computeCoordinates2D();
+    // Get 2D coordinates
+    let [ground_coord_2D, sky_coord_2D] = computeCoordinates2D();
 
-	// create a simple square shape. We duplicate the top left and bottom right
-	let blackHolesGeometry = new THREE.BufferGeometry();
+    // create a simple square shape. We duplicate the top left and bottom right
+    let blackHolesGeometry = new THREE.BufferGeometry();
 
-	let vertices = fillVertices(ground_coord_2D, sky_coord_2D);
+    let vertices = fillVertices(ground_coord_2D, sky_coord_2D);
 
+    // itemSize = 3 because there are 3 values (components) per vertex
+    blackHolesGeometry.setAttribute(
+          "position",
+          new THREE.BufferAttribute(vertices, 3)
+    );
 
-	// itemSize = 3 because there are 3 values (components) per vertex
-	blackHolesGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
+    let blackHolesMaterial = new THREE.MeshBasicMaterial({
+          transparent: true,
+          color: 0x0,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+    });
 
-	let blackHolesMaterial = new THREE.MeshBasicMaterial({ transparent: true, color: 0x0, side: THREE.DoubleSide, depthWrite: false });
+    blackHoles = new THREE.Mesh(blackHolesGeometry, blackHolesMaterial);
 
-	blackHoles = new THREE.Mesh(blackHolesGeometry, blackHolesMaterial);
+    scene.add(blackHoles);
 
-	scene.add(blackHoles);
-
-	blackHoles.visible = mode3D;
+    blackHoles.visible = mode3D;
 }
 
 
