@@ -1,8 +1,8 @@
 /* Global variables */
-const HALF_WIDTH = 394.0;		// Half width of image
+const HALF_WIDTH = 394.0;	// Half width of image
 const HALF_HEIGHT = 256.5;	// Half height of image
 
-const TRANS_MAT = [651222.0, 6861323.5]	// Coordinate of the image center : translation matrix
+const TRANS_MAT = [651222.0, 6861323.5];	// Coordinate of the image center : translation matrix
 
 const SKY_EDGES_PATH = "edges/sky_edges.json";
 const GROUND_EDGES_PATH = "edges/ground_edges.json";
@@ -12,7 +12,7 @@ const ROOF_EDGES_PATH = "edges/roof_edges.json";
 
 /* Definition of our variables */
 let camera, scene, renderer, controls;
-let map, buildings, blackHoles, linesGround, linesSky;
+let map, buildings, blackHoles, linesGround, linesSky, linesRoof;
 let z_offset_bh = 0; 	// (meters) to elevate the building buildings
 let mode3D = true; 		// variable to define the default mode 2D or 3D
 let edgesVisible = false; 	// variable to define the default visibility of the edges
@@ -40,7 +40,7 @@ Promise.all(promises)
 		createEdges();
 		createPolygons();
 		createBlackHoles();
-	})
+	});
 
 
 /* Running */
@@ -133,6 +133,7 @@ window.onload = function () {
 			edgesVisible = value;
 			linesGround.visible = edgesVisible;
 			linesSky.visible = edgesVisible;
+			linesRoof.visible = edgesVisible;
 		});
 };
 
@@ -179,7 +180,7 @@ function computeCoordinates2D() {
 
 /**
  * Compute the 3D coordinates for ground and sky (edges by edges)
- * @returns {[[[[float]]]]} [ ground_coord_3D, sky_coord_3D ]
+ * @returns {[[[[float]]]]} [ ground_coord_3D, sky_coord_3D, roof_coord_3D ]
  */
 function computeCoordinates3D() {
 	let [ground_coord_2D, sky_coord_2D, roof_coord_2D] = computeCoordinates2D();
@@ -193,7 +194,7 @@ function computeCoordinates3D() {
 		// Calcul 2D coordinates
 		let ground_edge_2D = ground_coord_2D[i];
 		let sky_edge_2D = sky_coord_2D[i];
-		let roof_edge_2D = sky_coord_2D[i];
+		let roof_edge_2D = roof_coord_2D[i];
 
 		// Compute distance: Z for the points couple (both extremities of edge)
 		let z_sky = [
@@ -273,7 +274,7 @@ function createMap() {
 /**
  * Create only the edges: ie sky and ground separately (by default in 3D)
  * @param {boolean} in3D 
- * @returns 2 geometries
+ * @returns 3 geometries
  */
 function createEdges(in3D = true) {
 	let ground_coord = [];
@@ -288,6 +289,7 @@ function createEdges(in3D = true) {
 
 	linesGround = new THREE.Group();
 	linesSky = new THREE.Group();
+	linesRoof = new THREE.Group();
 
 	for (let i = 0; i < ground_coord.length; i++) {
 
@@ -296,26 +298,26 @@ function createEdges(in3D = true) {
 		let roof_edge = roof_coord[i];
 
 		// Create geometries
-		const points = [];
-		points.push(
+		const ground_points = [];
+		ground_points.push(
 			new THREE.Vector3(ground_edge[0][0], ground_edge[0][1], ground_edge[0][2]),
 			new THREE.Vector3(ground_edge[1][0], ground_edge[1][1], ground_edge[1][2])
 		);
-		let geometryGround = new THREE.BufferGeometry().setFromPoints(points);
+		let geometryGround = new THREE.BufferGeometry().setFromPoints(ground_points);
 		
-		const points2 = []
-		points2.push(
+		const sky_points = []
+		sky_points.push(
 			new THREE.Vector3(sky_edge[0][0], sky_edge[0][1], sky_edge[0][2]),
 			new THREE.Vector3(sky_edge[1][0], sky_edge[1][1], sky_edge[1][2])
 		);
-		let geometrySky = new THREE.BufferGeometry().setFromPoints(points2);
+		let geometrySky = new THREE.BufferGeometry().setFromPoints(sky_points);
 
-		const points3 = []
-		points3.push(
+		const roof_points = []
+		roof_points.push(
 			new THREE.Vector3(roof_edge[0][0], roof_edge[0][1], roof_edge[0][2]),
 			new THREE.Vector3(roof_edge[1][0], roof_edge[1][1], roof_edge[1][2])
 		);
-		let geometryRoof = new THREE.BufferGeometry().setFromPoints(points3);
+		let geometryRoof = new THREE.BufferGeometry().setFromPoints(roof_points);
 
 
 		// Create Materials with color (with texture)
@@ -336,17 +338,19 @@ function createEdges(in3D = true) {
 		var lineRoof = new THREE.Line(geometryRoof, materialRoof);
 
 		// Add to scene
-		scene.add(lineSky);
-		scene.add(lineGround);
-		scene.add(lineRoof);
+		linesSky.add(lineSky);
+		linesGround.add(lineGround);
+		linesRoof.add(lineRoof);
 	}
 
 	// Add to scene
 	scene.add(linesGround);
 	scene.add(linesSky);
+	scene.add(linesRoof);
 
 	linesGround.visible = edgesVisible;
 	linesSky.visible = edgesVisible;
+	linesRoof.visible = edgesVisible;
 }
 
 /**
