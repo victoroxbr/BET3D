@@ -5,7 +5,7 @@
 
 The project can be visualized at : [victoroxbr.github.io/BET3D](https://victoroxbr.github.io/BET3D/).
 
-A video can also be visualized at : ![BET3D Vid](https://user-images.githubusercontent.com/57924582/109895082-e854bd80-7c8e-11eb-80fc-cae2ff70a018.mp4).
+A video can also be visualized at : ![BET3D Vid](https://user-images.githubusercontent.com/57924582/109982672-6b632b80-7d02-11eb-8c37-a3f3080f180c.mp4).
 
 ## Context
 This project takes place in the Web 3D lesson of the TSI course at the [ENSG](http://www.ensg.eu). The [IGN](http://www.ign.fr) wants to create a 3D view from the [Turgot map](https://fr.wikipedia.org/wiki/Plan_de_Turgot#/media/Fichier:Turgot_map_of_Paris_-_Norman_B._Leventhal_Map_Center.jpg) of Paris.
