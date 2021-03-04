@@ -14,8 +14,8 @@ There is a previous project realised by ENSG students on this page : [BET3D](htt
 
 The new objectives are:
 * Add roof edges in the modelisation
-* Animate the appearance of the buildings
-* Differenciate the animation of the building and the roof 
+* Animate the appearance/disappearance of the buildings in 3D mode
+* Differenciate the animation of the building and the roof
 
 
 ## Development
@@ -44,7 +44,7 @@ The steps of the project were:
     3. Creating a geometry roof for the buildings in 3D
 
     4. Implementing functionnalities:
-        * rotation of the buildgins on clicking on the `mode_3D` button
+        * rotation of the buildgins on clicking on the `mode_3D` button (on/off)
         * differenciate roof and building animation
 
 
