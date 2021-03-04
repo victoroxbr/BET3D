@@ -1,6 +1,6 @@
 uniform float percentage;
 varying vec2 vUv;
-// don't ask why float, voodoo shit
+// don't ask why float ^^
 attribute float sky;
 attribute vec3 ground3D;
 attribute vec3 co_vertice;
@@ -16,7 +16,7 @@ void main() {
     } else {
         newPosition = position;
     }
-    gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );    
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0 );    
 }      
 
 vec3 interpol(vec3 ground3D, vec3 position, float percentage) {
