@@ -12,7 +12,7 @@ const ROOF_EDGES_PATH = "edges/roof_edges.json";
 
 /* Definition of our variables */
 let camera, scene, renderer, controls;
-let map, buildings, blackHoles, linesGround, linesSky, linesRoof;
+let map, buildings, shadows, blackHoles, linesGround, linesSky, linesRoof;
 let z_offset_bh = 0; 	// (meters) to elevate the building buildings
 let mode3D = true; 		// variable to define the default mode 2D or 3D
 let edgesVisible = false; 	// variable to define the default visibility of the edges
@@ -81,9 +81,10 @@ function animate() {
 
     controls.update();
 
-	if (buildings.children[0].material.uniforms.percentage.value < 1)
-        buildings.children[0].material.uniforms.percentage.value += 0.0005;
-
+	if (buildings.material.uniforms.percentage.value < 1 && mode3D) {
+        buildings.material.uniforms.percentage.value += 0.0005;
+				shadows.material.uniforms.percentage.value += 0.0005;
+		}
     renderer.render(scene, camera);
 }
 
@@ -126,8 +127,13 @@ window.onload = function () {
 	gui.add(text, 'turgotView');
 	gui.add(text, 'mode3D')
 		.onChange((value) => {
-			mode3D = value;
+			mode3D = value;			
+			if(!value) {
+				buildings.material.uniforms.percentage.value = 0.0005;
+				shadows.material.uniforms.percentage.value = 0.0005;
+			}
 			buildings.visible = mode3D;
+			shadows.visible = mode3D;
 			blackHoles.visible = mode3D;
 		});
 	gui.add(text, 'showEdges')
@@ -380,46 +386,57 @@ function arraysEqual(a, b) {
  * @return 1 group geometry of buildings
  */
 function createPolygons() {
-	// Get 3D coordinates
-	let [ground_coord_3D, sky_coord_3D, roof_coord_3D] = computeCoordinates3D();
-	// Get 2D coordinates
-	let [ground_coord_2D, sky_coord_2D, roof_coord_2D] = computeCoordinates2D();
+    // Get 3D coordinates
+    let [ground_coord_3D, sky_coord_3D, roof_coord_3D] = computeCoordinates3D();
+    // Get 2D coordinates
+    let [ground_coord_2D, sky_coord_2D, roof_coord_2D] = computeCoordinates2D();
 
-	// create a simple square shape. We duplicate the top left and bottom right
-	let buildingsGeometry = new THREE.BufferGeometry();
+    // create a simple square shape. We duplicate the top left and bottom right
+    let buildingsGeometry = new THREE.BufferGeometry();
 
-	let vertices = fillVertices(ground_coord_3D, sky_coord_3D, roof_coord_3D);
-	let groundVertices = fillVertices(ground_coord_2D, sky_coord_2D, roof_coord_2D);
-	let uv = fillUV(ground_coord_2D, sky_coord_2D, roof_coord_2D);
+    let [vertices, co_vertices] = fillVertices(ground_coord_3D, sky_coord_3D, roof_coord_3D);
+    let [groundVertices, co_groundVertices] = fillVertices(
+        ground_coord_2D,
+        sky_coord_2D,
+        roof_coord_2D
+    );
+    let uv = fillUV(ground_coord_2D, sky_coord_2D, roof_coord_2D);
 
-	buildingsGeometry.setAttribute('position', new THREE.BufferAttribute(vertices, 3));
-	buildingsGeometry.setAttribute('uv', new THREE.BufferAttribute(uv, 2));	
+    buildingsGeometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(vertices, 3)
+    );
+    buildingsGeometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 
-	let texture1 = new THREE.TextureLoader().load(
+    let texture1 = new THREE.TextureLoader().load(
         "./images/turgot_map_crop2.jpeg"
     );
 
     let uniforms = {
         texture1: { type: "t", value: texture1 },
-        percentage: {type: "float", value: 0.0},      
+        setColor: { type: "int", value: false },
+        percentage: { type: "float", value: 0.0 },
     };
 
     let sky = new Uint8Array(buildingsGeometry.attributes.position.count);
     for (let i = 0; i < buildingsGeometry.attributes.position.count; i++) {
         if (i % 12 == 0 || i % 12 == 1 || i % 12 == 11) {
             // ground 1 or ground 2
-            sky[i] = false;
-        } else {
+            sky[i] = 0;
+        } else if(i % 12 == 2 || i % 12 == 3 || i % 12 == 7 || i % 12 == 8 || i % 12 == 9 || i % 12 == 10){
             // sky 2
-            sky[i] = true;
-        }  
-	}
+            sky[i] = 1;
+        } else {
+					sky[i] = 2;
+				}
+    }
 
     buildingsGeometry.setAttribute(
         "ground3D",
         new THREE.BufferAttribute(groundVertices, 3)
     );
     buildingsGeometry.setAttribute("sky", new THREE.BufferAttribute(sky, 1));
+		buildingsGeometry.setAttribute("co_vertice", new THREE.BufferAttribute(co_vertices, 3));
 
     let fragmentShader = document.getElementById("fragmentShader").innerHTML;
     let vertexShader = document.getElementById("vertexShader").innerHTML;
@@ -428,21 +445,30 @@ function createPolygons() {
         uniforms: uniforms,
         vertexShader: vertexShader,
         fragmentShader: fragmentShader,
+        side: THREE.FrontSide,
     });
-    let buildingsColorMaterial = new THREE.MeshBasicMaterial({
-        transparent: true,
-        color: 0x0,
+
+    let uniforms2 = {
+        color: { type: "vec3", value: new THREE.Color(0x000000) },
+        setColor: { type: "int", value: 1 },
+        percentage: { type: "float", value: 0.0 },
+    };
+
+    let buildingsColorMaterial = new THREE.ShaderMaterial({
+        uniforms: uniforms2,
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
         side: THREE.BackSide,
+        transparent: true,
     });
 
+		buildings = new THREE.Mesh(buildingsGeometry, buildingsTextureMaterial);
+		shadows = new THREE.Mesh(buildingsGeometry, buildingsColorMaterial)
 
-	buildings = new THREE.Group();
-	buildings.add(new THREE.Mesh(buildingsGeometry, buildingsTextureMaterial));
-	buildings.add(new THREE.Mesh(buildingsGeometry, buildingsColorMaterial));
+		scene.add(buildings);
+		scene.add(shadows);
 
-	scene.add(buildings);
-
-	buildings.visible = mode3D;
+    buildings.visible = mode3D;
 }
 
 
@@ -457,7 +483,7 @@ function createBlackHoles() {
 	// create a simple square shape. We duplicate the top left and bottom right
 	let blackHolesGeometry = new THREE.BufferGeometry();
 
-	let vertices = fillVertices(ground_coord_2D, sky_coord_2D, roof_coord_2D);
+	let [vertices, co_vertices] = fillVertices(ground_coord_2D, sky_coord_2D, roof_coord_2D);
 
     // itemSize = 3 because there are 3 values (components) per vertex
     blackHolesGeometry.setAttribute(
@@ -495,6 +521,7 @@ function fillVertices(ground_coord, sky_coord, roof_coord) {
 	let nb_vertices = (ground_coord.length + sky_coord.length + roof_coord.length) * 6 * 3;
 	/* Initialisation of vertices and uv */
 	let vertices = new Float32Array(nb_vertices);
+	let co_vertices = new Float32Array(nb_vertices);
 
 	/* Fill array */
 	let i_vertices = 0;
@@ -504,36 +531,48 @@ function fillVertices(ground_coord, sky_coord, roof_coord) {
 		let [roof1, roof2] = roof_coord[i];
 
 		vertices.set(ground1, i_vertices);
+		co_vertices.set(ground2, i_vertices)
 		i_vertices += 3;
 		vertices.set(ground2, i_vertices);
+		co_vertices.set(ground1, i_vertices);
 		i_vertices += 3;
 		vertices.set(sky2, i_vertices);
+		co_vertices.set(sky1, i_vertices);
 		i_vertices += 3;
 
 		vertices.set(sky2, i_vertices);
+		co_vertices.set(sky1, i_vertices);
 		i_vertices += 3;
 		vertices.set(roof2, i_vertices);
+		co_vertices.set(roof1,i_vertices);
 		i_vertices += 3;
 		vertices.set(roof1, i_vertices);
+		co_vertices.set(roof2,i_vertices);
 		i_vertices += 3;
 
 		vertices.set(roof1, i_vertices);
+		co_vertices.set(roof2, i_vertices);
 		i_vertices += 3;
 		vertices.set(sky1, i_vertices);
+		co_vertices.set(sky2,i_vertices);
 		i_vertices += 3;
 		vertices.set(sky2, i_vertices);
+		co_vertices.set(sky1,i_vertices);
 		i_vertices += 3;
 
 		vertices.set(sky2, i_vertices);
+		co_vertices.set(sky1,i_vertices);
 		i_vertices += 3;
 		vertices.set(sky1, i_vertices);
+		co_vertices.set(sky2,i_vertices);
 		i_vertices += 3;
 		vertices.set(ground1, i_vertices);
+		co_vertices.set(ground2,i_vertices);
 		i_vertices += 3;
 
 	}
 
-	return vertices;
+	return [vertices, co_vertices];
 }
 
 
