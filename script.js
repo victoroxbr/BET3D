@@ -82,9 +82,29 @@ function animate() {
     controls.update();
 
 	if (buildings.material.uniforms.percentage.value < 1 && mode3D) {
-        buildings.material.uniforms.percentage.value += 0.0005;
-				shadows.material.uniforms.percentage.value += 0.0005;
-		}
+		buildings.visible = mode3D;
+		shadows.visible = mode3D;
+		blackHoles.visible = mode3D;
+
+        buildings.material.uniforms.percentage.value += 0.001;
+		shadows.material.uniforms.percentage.value += 0.001;
+	}
+	
+	if(buildings.material.uniforms.percentage.value >= 0.001 && !mode3D) {
+		buildings.visible = !mode3D;
+		shadows.visible = !mode3D;
+		blackHoles.visible = !mode3D;
+
+		buildings.material.uniforms.percentage.value -= 0.001;
+		shadows.material.uniforms.percentage.value -= 0.001;
+	}
+
+	if(!mode3D && buildings.material.uniforms.percentage.value < 0.001) {
+		buildings.visible = mode3D;
+		shadows.visible = mode3D;
+		blackHoles.visible = mode3D;
+	}
+
     renderer.render(scene, camera);
 }
 
@@ -127,14 +147,7 @@ window.onload = function () {
 	gui.add(text, 'turgotView');
 	gui.add(text, 'mode3D')
 		.onChange((value) => {
-			mode3D = value;			
-			if(!value) {
-				buildings.material.uniforms.percentage.value = 0.0005;
-				shadows.material.uniforms.percentage.value = 0.0005;
-			}
-			buildings.visible = mode3D;
-			shadows.visible = mode3D;
-			blackHoles.visible = mode3D;
+			mode3D = value;		
 		});
 	gui.add(text, 'showEdges')
 		.onChange((value) => {
