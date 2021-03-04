@@ -5,7 +5,7 @@
 
 The project can be visualized at : [victoroxbr.github.io/BET3D](https://victoroxbr.github.io/BET3D/).
 
-A video can also be visualized at : ![BET3D Vid](https://user-images.githubusercontent.com/57924582/109895082-e854bd80-7c8e-11eb-80fc-cae2ff70a018.mp4).
+A video can also be visualized at : ![BET3D Vid](https://user-images.githubusercontent.com/57924582/109982672-6b632b80-7d02-11eb-8c37-a3f3080f180c.mp4).
 
 ## Context
 This project takes place in the Web 3D lesson of the TSI course at the [ENSG](http://www.ensg.eu). The [IGN](http://www.ign.fr) wants to create a 3D view from the [Turgot map](https://fr.wikipedia.org/wiki/Plan_de_Turgot#/media/Fichier:Turgot_map_of_Paris_-_Norman_B._Leventhal_Map_Center.jpg) of Paris.
@@ -14,8 +14,8 @@ There is a previous project realised by ENSG students on this page : [BET3D](htt
 
 The new objectives are:
 * Add roof edges in the modelisation
-* Animate the appearance of the buildings
-* Differenciate the animation of the building and the roof 
+* Animate the appearance/disappearance of the buildings in 3D mode
+* Differenciate the animation of the building and the roof
 
 
 ## Development
@@ -44,7 +44,7 @@ The steps of the project were:
     3. Creating a geometry roof for the buildings in 3D
 
     4. Implementing functionnalities:
-        * rotation of the buildgins on clicking on the `mode_3D` button
+        * rotation of the buildgins on clicking on the `mode_3D` button (on/off)
         * differenciate roof and building animation
 
 
